@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>O Level Study Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #151820;
+    --card: #1c2030;
+    --border: #252a3a;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --accent-phy: #38bdf8;
+    --accent-math: #a78bfa;
+    --accent-add: #f472b6;
+    --accent-bio: #34d399;
+    --accent-chem: #fb923c;
+    --accent-eng: #facc15;
+    --accent-ban: #f87171;
+    --done: #22c55e;
+    --partial: #f59e0b;
+    --todo: #374151;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Sora', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,15,20,0.92);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+  }
+  .topbar h1 { font-size: 1rem; font-weight: 700; letter-spacing: .04em; }
+  .topbar h1 span { color: var(--accent-phy); }
+  .overall-bar {
+    flex: 1; max-width: 220px;
+    background: var(--border); border-radius: 99px; height: 8px; overflow: hidden;
+  }
+  .overall-fill {
+    height: 100%; border-radius: 99px;
+    background: linear-gradient(90deg, var(--accent-phy), var(--accent-bio));
+    transition: width .6s ease;
+  }
+  .overall-pct { font-family: 'JetBrains Mono', monospace; font-size: .75rem; color: var(--muted); white-space: nowrap; }
+  .tabs-wrap {
+    display: flex; gap: 6px; overflow-x: auto;
+    padding: 14px 20px 0; scrollbar-width: none;
+  }
+  .tabs-wrap::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex-shrink: 0;
+    padding: 8px 16px; border-radius: 99px;
+    border: 1px solid var(--border);
+    background: var(--surface); color: var(--muted);
+    font-family: 'Sora', sans-serif; font-size: .78rem; font-weight: 600;
+    cursor: pointer; transition: all .2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tab-btn .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .tab-btn.active { color: #fff; border-color: transparent; }
+  .tab-mini-pct { font-family: 'JetBrains Mono', monospace; font-size: .68rem; opacity: .7; }
+  .main { padding: 16px 20px 80px; max-width: 1100px; margin: 0 auto; }
+  .subject-panel { display: none; }
+  .subject-panel.active { display: block; animation: fadeIn .25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .subject-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 20px 0 14px; flex-wrap: wrap; gap: 10px;
+  }
+  .subject-title { font-size: 1.4rem; font-weight: 700; }
+  .subject-stats { display: flex; gap: 10px; flex-wrap: wrap; }
+  .stat-badge {
+    padding: 4px 12px; border-radius: 99px;
+    font-family: 'JetBrains Mono', monospace; font-size: .72rem;
+    border: 1px solid var(--border); color: var(--muted);
+  }
+  .seg-toggle { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .seg-btn {
+    padding: 6px 14px; border-radius: 99px;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--muted); font-family: 'Sora', sans-serif; font-size: .76rem; font-weight: 600;
+    cursor: pointer; transition: all .2s;
+  }
+  .seg-btn.active { color: #fff; }
+  .chapters-grid {
+    display: grid; gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+  .chapter-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px;
+    transition: border-color .2s;
+  }
+  .chapter-card:hover { border-color: rgba(255,255,255,.12); }
+  .ch-header {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+    margin-bottom: 10px;
+  }
+  .ch-name { font-size: .85rem; font-weight: 600; line-height: 1.4; }
+  .ch-num {
+    font-family: 'JetBrains Mono', monospace; font-size: .7rem;
+    color: var(--muted); flex-shrink: 0; margin-top: 2px;
+  }
+  .ch-section { margin-top: 8px; }
+  .ch-section-label {
+    font-size: .65rem; font-weight: 600; letter-spacing: .08em;
+    color: var(--muted); text-transform: uppercase; margin-bottom: 5px;
+  }
+  .status-row { display: flex; gap: 5px; flex-wrap: wrap; }
+  .status-pill {
+    padding: 3px 10px; border-radius: 99px; font-size: .7rem; font-weight: 600;
+    cursor: pointer; border: 1px solid transparent; transition: all .18s; user-select: none;
+  }
+  .status-pill.todo   { background: var(--todo); color: var(--muted); }
+  .status-pill.partial{ background: rgba(245,158,11,.15); color: var(--partial); border-color: rgba(245,158,11,.3); }
+  .status-pill.done   { background: rgba(34,197,94,.15); color: var(--done); border-color: rgba(34,197,94,.3); }
+  .years-grid { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .yr-chip {
+    width: 34px; height: 22px; border-radius: 5px;
+    font-family: 'JetBrains Mono', monospace; font-size: .6rem; font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all .15s; border: 1px solid var(--border);
+    background: var(--surface); color: var(--muted);
+  }
+  .yr-chip.v1-done { background: rgba(56,189,248,.2); color: var(--accent-phy); border-color: rgba(56,189,248,.4); }
+  .yr-chip.v2-done { background: rgba(167,139,250,.2); color: var(--accent-add); border-color: rgba(167,139,250,.4); }
+  .yr-chip.both-done { background: rgba(34,197,94,.2); color: var(--done); border-color: rgba(34,197,94,.4); }
+  .variant-labels { display: flex; gap: 8px; margin-bottom: 4px; }
+  .vl { font-size: .62rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--border); }
+  .vl.v1 { color: var(--accent-phy); border-color: rgba(56,189,248,.3); }
+  .vl.v2 { color: var(--accent-add); border-color: rgba(167,139,250,.3); }
+  .ch-progress { margin-top: 10px; }
+  .ch-prog-bar { background: var(--border); border-radius: 99px; height: 3px; overflow: hidden; }
+  .ch-prog-fill { height: 100%; border-radius: 99px; transition: width .4s ease; }
+  .summary-grid {
+    display: grid; gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    margin-bottom: 20px;
+  }
+  .summary-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 14px; text-align: center;
+  }
+  .summary-val { font-size: 1.6rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .summary-lbl { font-size: .67rem; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: .05em; }
+  .notes-area {
+    width: 100%; background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px; color: var(--text);
+    font-family: 'Sora', sans-serif; font-size: .82rem; resize: vertical;
+    min-height: 80px; margin-top: 10px;
+  }
+  .notes-area:focus { outline: none; border-color: rgba(255,255,255,.2); }
+  @media (max-width: 500px) {
+    .topbar h1 { font-size: .85rem; }
+    .overall-bar { max-width: 100px; }
+    .main { padding: 12px 12px 80px; }
+    .chapters-grid { grid-template-columns: 1fr; }
+    .subject-title { font-size: 1.1rem; }
+  }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; font-size: .7rem; color: var(--muted); }
+  .leg { display: flex; align-items: center; gap: 5px; }
+  .leg-dot { width: 10px; height: 10px; border-radius: 3px; }
+  .fab {
+    position: fixed; bottom: 24px; right: 20px;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--card); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 1.1rem; transition: all .2s; z-index: 200;
+  }
+  .fab:hover { background: var(--surface); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>📚 O Level <span>Tracker</span></h1>
+  <div class="overall-bar"><div class="overall-fill" id="overallFill" style="width:0%"></div></div>
+  <div class="overall-pct" id="overallPct">0%</div>
+</div>
+<div class="tabs-wrap" id="tabsWrap"></div>
+<div class="main" id="mainContent"></div>
+<div class="fab" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</div>
+<script>
+const YEARS = [];
+for (let y = 2015; y >= 2002; y--) YEARS.push(y);
+const SUBJECTS = [
+  { id:'phy', label:'Physics', emoji:'⚡', color:'#38bdf8', chapters:['Measurements & Units','Kinematics','Dynamics & Newton\'s Laws','Mass, Weight & Density','Moments & Equilibrium','Energy, Work & Power','Pressure','Kinetic Particle Theory','Thermal Properties of Matter','Transfer of Thermal Energy','General Wave Properties','Light & Reflection','Refraction of Light','Thin Lenses','Sound','Electromagnetic Spectrum','Static Electricity','Current Electricity','D.C. Circuits','Practical Electricity','Magnetism','Electromagnetism','Electromagnetic Induction','The Nucleus & Radioactivity'] },
+  { id:'math', label:'Math', emoji:'📐', color:'#a78bfa', chapters:['Numbers & Operations','Fractions, Decimals & Percentages','Ratio & Proportion','Rate, Speed & Distance','Algebraic Expressions','Equations & Inequalities','Indices & Standard Form','Polynomials & Factorisation','Quadratic Equations','Simultaneous Equations','Sequences & Patterns','Functions & Graphs','Linear Graphs','Quadratic Graphs','Coordinate Geometry','Mensuration (Perimeter, Area, Volume)','Trigonometry','Pythagoras Theorem','Bearings','Transformations','Vectors','Matrices','Probability','Statistics (Mean, Median, Mode)','Histograms & Frequency','Cumulative Frequency & Box Plots','Set Language & Notation'] },
+  { id:'add', label:'Add Math', emoji:'∑', color:'#f472b6', chapters:['Sets & Functions','Quadratic Functions','Equations, Inequalities & Graphs','Indices & Surds','Polynomials','Simultaneous Equations (AM)','Logarithmic & Exponential Functions','Straight Line Graphs','Circular Measure','Trigonometry (AM)','Permutations & Combinations','Binomial Theorem','Differentiation','Integration','Kinematics (AM)'] },
+  { id:'bio', label:'Biology', emoji:'🧬', color:'#34d399', chapters:['Cell Structure & Organisation','Biological Molecules','Movement In & Out of Cells','Enzymes','Plant Nutrition (Photosynthesis)','Human Nutrition (Digestion)','Transport in Plants','Transport in Humans','Disease & Immunity','Gas Exchange','Respiration','Excretion','Coordination & Response','Reproduction','Inheritance & Genetics','Variation & Natural Selection','Organisms & the Environment','Biotechnology & Genetic Engineering'] },
+  { id:'chem', label:'Chemistry', emoji:'🧪', color:'#fb923c', chapters:['Kinetic Particle Theory','Atomic Structure','Chemical Bonding','Chemical Formulae & Equations','The Mole Concept','Electrolysis','Energy Changes in Reactions','Rate of Reaction','Redox Reactions','The Periodic Table','Group I – Alkali Metals','Group VII – Halogens','Transition Elements','Metals & Reactivity Series','Extraction of Metals','Corrosion of Metals','Nitrogen & Sulfur Compounds','Organic Chemistry – Introduction','Alkanes & Alkenes','Alcohols, Acids & Esters','Polymers','Ammonia & Fertilisers'] },
+  { id:'eng', label:'English', emoji:'✍️', color:'#facc15', chapters:['Reading Comprehension (Directed Writing)','Directed Writing – Letter & Report','Directed Writing – Article & Speech','Composition – Narrative Writing','Composition – Descriptive Writing','Composition – Argumentative Writing','Summary Writing','Vocabulary in Context','Grammar – Tenses','Grammar – Sentence Structure','Grammar – Punctuation','Listening Skills','Speaking & Oral Skills'] },
+  { id:'ban', label:'Bangla', emoji:'🇧🇩', color:'#f87171', chapters:['গদ্য – বোধ পরীক্ষা (Reading)','পদ্য – কবিতা বিশ্লেষণ','রচনা – বর্ণনামূলক','রচনা – আলোচনামূলক','পত্র লেখা – আনুষ্ঠানিক','পত্র লেখা – ব্যক্তিগত','সারাংশ লেখা','ব্যাকরণ – শব্দ ও বাক্য','ব্যাকরণ – কারক ও বিভক্তি','ব্যাকরণ – সন্ধি ও সমাস','অনুবাদ (Translation)','শ্রুতিলিখন / Dictation Skills'] },
+];
+const VARIANTS = ['V1/CIE','V2/Edx'];
+const STATE_KEY = 'olevel_tracker_v3';
+const CYCLE = ['todo','partial','done'];
+let state = {};
+
+function defaultState() {
+  const s = { activeSubject:'phy', activeSeg:{}, notes:{} };
+  SUBJECTS.forEach(sub => {
+    s.activeSeg[sub.id] = 'theory';
+    s.notes[sub.id] = '';
+    sub.chapters.forEach((_,ci) => {
+      s[`${sub.id}_ch${ci}_theory`] = 'todo';
+      s[`${sub.id}_ch${ci}_questions`] = 'todo';
+      YEARS.forEach(yr => {
+        s[`${sub.id}_ch${ci}_y${yr}_v1`] = false;
+        s[`${sub.id}_ch${ci}_y${yr}_v2`] = false;
+      });
+    });
+  });
+  return s;
+}
+
+function loadState() {
+  try { const r = localStorage.getItem(STATE_KEY); state = Object.assign(defaultState(), r ? JSON.parse(r) : {}); }
+  catch { state = defaultState(); }
+}
+
+function saveState() { localStorage.setItem(STATE_KEY, JSON.stringify(state)); }
+
+function subjectProgress(sub) {
+  let total=0, done=0;
+  sub.chapters.forEach((_,ci) => {
+    ['theory','questions'].forEach(seg => {
+      total++; const v=state[`${sub.id}_ch${ci}_${seg}`];
+      if(v==='done') done++; else if(v==='partial') done+=0.5;
+    });
+    YEARS.forEach(yr => {
+      ['v1','v2'].forEach(v => { total++; if(state[`${sub.id}_ch${ci}_y${yr}_${v}`]) done++; });
+    });
+  });
+  return total ? Math.round((done/total)*100) : 0;
+}
+
+function overallProgress() {
+  let sum=0; SUBJECTS.forEach(s => sum+=subjectProgress(s));
+  return Math.round(sum/SUBJECTS.length);
+}
+
+function chapterProgress(sub,ci) {
+  let total=0,done=0;
+  ['theory','questions'].forEach(seg => {
+    total++; const v=state[`${sub.id}_ch${ci}_${seg}`];
+    if(v==='done') done++; else if(v==='partial') done+=0.5;
+  });
+  YEARS.forEach(yr => { ['v1','v2'].forEach(v => { total++; if(state[`${sub.id}_ch${ci}_y${yr}_${v}`]) done++; }); });
+  return total ? done/total : 0;
+}
+
+function render() { renderTabs(); renderPanel(); renderOverall(); }
+
+function renderOverall() {
+  const pct=overallProgress();
+  document.getElementById('overallFill').style.width=pct+'%';
+  document.getElementById('overallPct').textContent=pct+'%';
+}
+
+function renderTabs() {
+  const wrap=document.getElementById('tabsWrap'); wrap.innerHTML='';
+  SUBJECTS.forEach(sub => {
+    const pct=subjectProgress(sub);
+    const btn=document.createElement('button');
+    btn.className='tab-btn'+(state.activeSubject===sub.id?' active':'');
+    btn.style.borderColor=state.activeSubject===sub.id?sub.color:'';
+    btn.style.background=state.activeSubject===sub.id?sub.color+'18':'';
+    btn.style.color=state.activeSubject===sub.id?sub.color:'';
+    btn.innerHTML=`<span class="dot" style="background:${sub.color}"></span>${sub.emoji} ${sub.label} <span class="tab-mini-pct">${pct}%</span>`;
+    btn.onclick=()=>{ state.activeSubject=sub.id; saveState(); render(); };
+    wrap.appendChild(btn);
+  });
+}
+
+function renderPanel() {
+  const main=document.getElementById('mainContent'); main.innerHTML='';
+  const sub=SUBJECTS.find(s=>s.id===state.activeSubject); if(!sub) return;
+  const seg=state.activeSeg[sub.id]||'theory';
+  const pct=subjectProgress(sub);
+  let chDone=0;
+  sub.chapters.forEach((_,ci) => { if(state[`${sub.id}_ch${ci}_theory`]==='done'&&state[`${sub.id}_ch${ci}_questions`]==='done') chDone++; });
+  const header=document.createElement('div'); header.className='subject-header';
+  header.innerHTML=`<div class="subject-title" style="color:${sub.color}">${sub.emoji} ${sub.label}</div><div class="subject-stats"><span class="stat-badge">${pct}% overall</span><span class="stat-badge">${chDone}/${sub.chapters.length} chapters ✅</span></div>`;
+  main.appendChild(header);
+  let thDone=0,thPart=0,qDone=0,qPart=0,yrDone=0,yrTotal=0;
+  sub.chapters.forEach((_,ci) => {
+    const t=state[`${sub.id}_ch${ci}_theory`]; if(t==='done') thDone++; else if(t==='partial') thPart++;
+    const q=state[`${sub.id}_ch${ci}_questions`]; if(q==='done') qDone++; else if(q==='partial') qPart++;
+    YEARS.forEach(yr => { ['v1','v2'].forEach(v => { yrTotal++; if(state[`${sub.id}_ch${ci}_y${yr}_${v}`]) yrDone++; }); });
+  });
+  const sg=document.createElement('div'); sg.className='summary-grid';
+  sg.innerHTML=`<div class="summary-card"><div class="summary-val" style="color:${sub.color}">${pct}%</div><div class="summary-lbl">Progress</div></div><div class="summary-card"><div class="summary-val" style="color:var(--done)">${thDone}</div><div class="summary-lbl">Theory Done</div></div><div class="summary-card"><div class="summary-val" style="color:var(--partial)">${thPart}</div><div class="summary-lbl">Theory Partial</div></div><div class="summary-card"><div class="summary-val" style="color:var(--done)">${qDone}</div><div class="summary-lbl">Qs Done</div></div><div class="summary-card"><div class="summary-val" style="color:var(--accent-phy)">${yrDone}/${yrTotal}</div><div class="summary-lbl">Past Papers</div></div>`;
+  main.appendChild(sg);
+  const leg=document.createElement('div'); leg.className='legend';
+  leg.innerHTML=`<span class="leg"><span class="leg-dot" style="background:var(--todo)"></span> Not started</span><span class="leg"><span class="leg-dot" style="background:var(--partial)"></span> Partial</span><span class="leg"><span class="leg-dot" style="background:var(--done)"></span> Done</span><span class="leg"><span class="leg-dot" style="background:rgba(56,189,248,.5)"></span> V1</span><span class="leg"><span class="leg-dot" style="background:rgba(167,139,250,.5)"></span> V2</span><span class="leg"><span class="leg-dot" style="background:rgba(34,197,94,.5)"></span> Both</span>`;
+  main.appendChild(leg);
+  const segDiv=document.createElement('div'); segDiv.className='seg-toggle';
+  [['theory','📖 Theory'],['questions','❓ Q&A Practice'],['topical','📅 Topical Past Papers']].forEach(([s,lbl]) => {
+    const b=document.createElement('button'); b.className='seg-btn'+(seg===s?' active':'');
+    b.style.borderColor=seg===s?sub.color:''; b.style.color=seg===s?sub.color:'';
+    b.textContent=lbl; b.onclick=()=>{ state.activeSeg[sub.id]=s; saveState(); renderPanel(); };
+    segDiv.appendChild(b);
+  });
+  main.appendChild(segDiv);
+  const grid=document.createElement('div'); grid.className='chapters-grid';
+  sub.chapters.forEach((ch,ci) => {
+    const card=document.createElement('div'); card.className='chapter-card';
+    const progPct=Math.round(chapterProgress(sub,ci)*100);
+    let inner=`<div class="ch-header"><div class="ch-name">${ch}</div><div class="ch-num">Ch.${ci+1}</div></div>`;
+    if(seg==='theory'||seg==='questions') {
+      const skey=seg==='theory'?'theory':'questions';
+      const val=state[`${sub.id}_ch${ci}_${skey}`]||'todo';
+      inner+=`<div class="ch-section"><div class="ch-section-label">${seg==='theory'?'Theory Study':'Practice Questions'}</div><div class="status-row">${['todo','partial','done'].map(s=>`<span class="status-pill ${val===s?s:'todo'}" style="${val===s?'':'opacity:.45'}" data-sub="${sub.id}" data-ci="${ci}" data-seg="${skey}">${s==='todo'?'Not yet':s==='partial'?'In progress':'Completed'}</span>`).join('')}</div></div>`;
+    }
+    if(seg==='topical') {
+      inner+=`<div class="ch-section"><div class="variant-labels"><span class="vl v1">${VARIANTS[0]}</span><span class="vl v2">${VARIANTS[1]}</span></div><div class="ch-section-label">Tap: none → V1 → V2 → Both → reset</div><div class="years-grid">${YEARS.map(yr=>{const v1=state[`${sub.id}_ch${ci}_y${yr}_v1`];const v2=state[`${sub.id}_ch${ci}_y${yr}_v2`];let cls='';if(v1&&v2)cls='both-done';else if(v2)cls='v2-done';else if(v1)cls='v1-done';return`<span class="yr-chip ${cls}" data-sub="${sub.id}" data-ci="${ci}" data-yr="${yr}">${yr.toString().slice(2)}</span>`;}).join('')}</div></div>`;
+    }
+    inner+=`<div class="ch-progress"><div class="ch-prog-bar"><div class="ch-prog-fill" style="width:${progPct}%;background:${sub.color}"></div></div></div>`;
+    card.innerHTML=inner; grid.appendChild(card);
+  });
+  main.appendChild(grid);
+  const noteLabel=document.createElement('div');
+  noteLabel.style.cssText='font-size:.75rem;color:var(--muted);margin-top:24px;margin-bottom:4px;font-weight:600;';
+  noteLabel.textContent='📝 Notes for '+sub.label; main.appendChild(noteLabel);
+  const ta=document.createElement('textarea'); ta.className='notes-area';
+  ta.placeholder='Add your notes, reminders, or weak areas here…';
+  ta.value=state.notes[sub.id]||'';
+  ta.oninput=()=>{ state.notes[sub.id]=ta.value; saveState(); };
+  main.appendChild(ta);
+  main.addEventListener('click',e=>{
+    if(e.target.classList.contains('status-pill')) {
+      const {sub:s,ci,seg:sg}=e.target.dataset;
+      const key=`${s}_ch${ci}_${sg}`;
+      const cur=state[key]||'todo';
+      state[key]=CYCLE[(CYCLE.indexOf(cur)+1)%CYCLE.length];
+      saveState(); render();
+    }
+    if(e.target.classList.contains('yr-chip')) {
+      const {sub:s,ci,yr}=e.target.dataset;
+      const v1=state[`${s}_ch${ci}_y${yr}_v1`]; const v2=state[`${s}_ch${ci}_y${yr}_v2`];
+      if(!v1&&!v2){ state[`${s}_ch${ci}_y${yr}_v1`]=true; }
+      else if(v1&&!v2){ state[`${s}_ch${ci}_y${yr}_v2`]=true; }
+      else{ state[`${s}_ch${ci}_y${yr}_v1`]=false; state[`${s}_ch${ci}_y${yr}_v2`]=false; }
+      saveState(); render();
+    }
+  });
+}
+loadState(); render();
+</script>
+</body>
+</html>
